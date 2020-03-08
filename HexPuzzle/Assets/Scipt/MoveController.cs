@@ -58,7 +58,6 @@ public class MoveController : MonoBehaviour
     public void DropPiece()
     {
         if (moving == null) return;
-        Debug.Log("Dropped");
         if (!newPoint.Equals(moving.point))
             game.FlipPieces(moving.point, newPoint, true);
         else

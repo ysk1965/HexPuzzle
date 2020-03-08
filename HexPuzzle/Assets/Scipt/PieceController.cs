@@ -13,12 +13,29 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
     public int cntCrossDown;
     public int cntStraight;
 
+    public int hitCount =0;
+
     [HideInInspector]
     public Vector2 pos;
     [HideInInspector]
     public RectTransform rect;
 
     bool updating;
+
+    public void Update()
+    {
+        switch (hitCount)
+        {
+            case 0:
+                break;
+            case 1:
+                gameObject.transform.Rotate(new Vector3(0, 0, 2));
+                //DeleteConnectedPoint(point);
+                break;
+            case 2:
+                break;
+        }
+    }
 
     public void Initialize(int v, Point p)
     {
@@ -27,6 +44,13 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
         value = v;
         SetPoint(p);
         SetColor(value);
+    }
+
+    public void initCnt()
+    {
+        cntCrossUp = 0;
+        cntCrossDown = 0;
+        cntStraight = 0;
     }
 
     public void SetColor(int val)
@@ -64,7 +88,7 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
 
     public void ResetPosition()
     {
-        pos = new Vector2(MatchController.anchor_x + (120 * point.x), MatchController.anchor_y - (70 * point.y));
+        pos = new Vector2(BoardController.anchor_x + (120 * point.x), BoardController.anchor_y - (70 * point.y));
     }
 
     public void MovePosition(Vector2 move)
@@ -106,6 +130,7 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
     public void OnPointerDown(PointerEventData eventData)
     {
         if (updating) return;
+        if (MatchController.bUpdateLogic) return;
         MoveController.instance.MovePiece(this);
     }
 
