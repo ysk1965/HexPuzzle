@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MovePieces : MonoBehaviour
+public class MoveController : MonoBehaviour
 {
-    public static MovePieces instance;
-    Match3 game;
+    public static MoveController instance;
+    MatchController game;
 
-    NodePiece moving;
-    Point newIndex;
+    PieceController moving;
+    Point newPoint;
     Vector2 mouseStart;
 
     private void Awake()
@@ -18,37 +18,37 @@ public class MovePieces : MonoBehaviour
 
     void Start()
     {
-        game = GetComponent<Match3>();
+        game = GetComponent<MatchController>();
     }
 
     void Update()
     {
-        if(moving != null)
+        if (moving != null)
         {
             Vector2 dir = ((Vector2)Input.mousePosition - mouseStart);
             Vector2 nDir = dir.normalized;
             Vector2 aDir = new Vector2(Mathf.Abs(dir.x), Mathf.Abs(dir.y));
 
-            newIndex = Point.clone(moving.index);
+            newPoint = Point.clone(moving.point);
             Point add = Point.zero;
             if (dir.magnitude > 32) //If our mouse is 32 pixels away from the starting point of the mouse
             {
                 // 6방향 dir
                 if (aDir.y > aDir.x)
-                    add = (new Point(0, (nDir.y > 0) ? 2 : -2));
+                    add = (new Point(0, (nDir.y < 0) ? 2 : -2));
                 else if (aDir.x > aDir.y)
-                    add = (new Point((nDir.x > 0) ? 1 : -1, (nDir.y < 0) ? -1 : 1));
+                    add = (new Point((nDir.x < 0) ? -1 : 1, (nDir.y < 0) ? 1 : -1));
             }
-            newIndex.add(add);
+            newPoint.add(add);
 
-            Vector2 pos = game.getPositionFromPoint(moving.index);
-            if (!newIndex.Equals(moving.index))
-                pos += Point.mult(new Point(add.x, -add.y), 16).ToVector();
+            Vector2 pos = game.getPositionFromPoint(moving.point);
+            if (!newPoint.Equals(moving.point))
+                pos += Point.mult(new Point(add.x, -add.y), 50).ToVector();
             moving.MovePositionTo(pos);
         }
     }
 
-    public void MovePiece(NodePiece piece)
+    public void MovePiece(PieceController piece)
     {
         if (moving != null) return;
         moving = piece;
@@ -59,8 +59,8 @@ public class MovePieces : MonoBehaviour
     {
         if (moving == null) return;
         Debug.Log("Dropped");
-        if (!newIndex.Equals(moving.index))
-            game.FlipPieces(moving.index, newIndex, true);
+        if (!newPoint.Equals(moving.point))
+            game.FlipPieces(moving.point, newPoint, true);
         else
             game.ResetPiece(moving);
         moving = null;

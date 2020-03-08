@@ -6,9 +6,12 @@ using UnityEngine.EventSystems;
 
 public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
-
     public int value;
-    public MyPoint piecePoint;
+    public Point point;
+
+    public int cntCrossUp;
+    public int cntCrossDown;
+    public int cntStraight;
 
     [HideInInspector]
     public Vector2 pos;
@@ -17,12 +20,12 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
 
     bool updating;
 
-    public void Initialize(int v, MyPoint p)
+    public void Initialize(int v, Point p)
     {
         rect = GetComponent<RectTransform>();
 
         value = v;
-        SetIndex(p);
+        SetPoint(p);
         SetColor(value);
     }
 
@@ -52,16 +55,16 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
         }
     }
 
-    public void SetIndex(MyPoint p)
+    public void SetPoint(Point p)
     {
-        piecePoint = p;
+        point = p;
         ResetPosition();
         UpdateName();
     }
 
     public void ResetPosition()
     {
-        pos = new Vector2(-360 + (120 * piecePoint.x), -400 - (70 * piecePoint.y));
+        pos = new Vector2(MatchController.anchor_x + (120 * point.x), MatchController.anchor_y - (70 * point.y));
     }
 
     public void MovePosition(Vector2 move)
@@ -72,6 +75,11 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
     public void MovePositionTo(Vector2 move)
     {
         rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, move, Time.deltaTime * 16f);
+    }
+
+    public void SetPosition(Vector2 move)
+    {
+        rect.anchoredPosition = move;
     }
 
     public bool UpdatePiece()
@@ -92,17 +100,17 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
 
     void UpdateName()
     {
-        transform.name = "Node [" + piecePoint.x + ", " + piecePoint.y + "]";
+        transform.name = "Grid [" + point.x + ", " + point.y + "]";
     }
 
     public void OnPointerDown(PointerEventData eventData)
     {
         if (updating) return;
-        GameManager.instance.MovePiece(this);
+        MoveController.instance.MovePiece(this);
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        GameManager.instance.DropPiece();
+        MoveController.instance.DropPiece();
     }
 }

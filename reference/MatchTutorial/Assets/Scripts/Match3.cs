@@ -16,7 +16,7 @@ public class Match3 : MonoBehaviour
     public GameObject killedPiece;
 
     int width = 9;
-    int height = 9;
+    int height = 13;
     int[] fills;
     Node[,] board;
 
@@ -285,9 +285,9 @@ public class Match3 : MonoBehaviour
             killed.Add(kPiece);
         }
 
-        int val = getValueAtPoint(p) - 1;
-        if (set != null && val >= 0 && val < pieces.Length)
-            set.Initialize(pieces[val], getPositionFromPoint(p));
+        //int val = getValueAtPoint(p) - 1;
+        //if (set != null && val >= 0 && val < pieces.Length)
+        //    set.Initialize(pieces[val], getPositionFromPoint(p));
     }
 
     List<Point> isConnected(Point p, bool main)
@@ -297,9 +297,9 @@ public class Match3 : MonoBehaviour
         Point[] directions =
         {
             Point.up,
-            Point.right,
+            Point.rightUp,
+            Point.rightDown,
             Point.down,
-            Point.left
         };
         
         foreach(Point dir in directions) //Checking if there is 2 or more same shapes in the directions

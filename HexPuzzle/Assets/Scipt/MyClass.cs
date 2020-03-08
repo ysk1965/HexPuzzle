@@ -14,12 +14,68 @@ public enum eStatus
 }
 
 [System.Serializable]
-public class MyPoint
+public class Grid
+{
+    public int value;
+    public Point point;
+    PieceController piece;
+
+    public Grid(int v, Point i)
+    {
+        value = v;
+        point = i;
+    }
+
+    public void SetPiece(PieceController p)
+    {
+        piece = p;
+        if (piece == null)
+        {
+            // piece는 null, value는 빈칸으로
+            value = 0;
+        }
+        else
+        {
+            value = piece.value;
+            piece.SetPoint(point);
+        }
+    }
+
+    public PieceController getPiece()
+    {
+        return piece;
+    }
+}
+
+[System.Serializable]
+public class ChangePiece
+{
+    public PieceController one;
+    public PieceController two;
+
+    public ChangePiece(PieceController o, PieceController t)
+    {
+        one = o; two = t;
+    }
+
+    public PieceController getOtherPiece(PieceController p)
+    {
+        if (p == one)
+            return two;
+        else if (p == two)
+            return one;
+        else
+            return null;
+    }
+}
+
+[System.Serializable]
+public class Point
 {
     public int x;
     public int y;
 
-    public MyPoint(int nx, int ny)
+    public Point(int nx, int ny)
     {
         x = nx;
         y = ny;
@@ -31,7 +87,7 @@ public class MyPoint
         y *= m;
     }
 
-    public void add(MyPoint p)
+    public void add(Point p)
     {
         x += p.x;
         y += p.y;
@@ -42,59 +98,67 @@ public class MyPoint
         return new Vector2(x, y);
     }
 
-    public bool Equals(MyPoint p)
+    public bool Equals(Point p)
     {
         return (x == p.x && y == p.y);
     }
 
-    public static MyPoint fromVector(Vector2 v)
+    public static Point fromVector(Vector2 v)
     {
-        return new MyPoint((int)v.x, (int)v.y);
+        return new Point((int)v.x, (int)v.y);
     }
 
-    public static MyPoint fromVector(Vector3 v)
+    public static Point fromVector(Vector3 v)
     {
-        return new MyPoint((int)v.x, (int)v.y);
+        return new Point((int)v.x, (int)v.y);
     }
 
-    public static MyPoint mult(MyPoint p, int m)
+    public static Point mult(Point p, int m)
     {
-        return new MyPoint(p.x * m, p.y * m);
+        return new Point(p.x * m, p.y * m);
     }
 
-    public static MyPoint add(MyPoint p, MyPoint o)
+    public static Point add(Point p, Point o)
     {
-        return new MyPoint(p.x + o.x, p.y + o.y);
+        return new Point(p.x + o.x, p.y + o.y);
     }
 
-    public static MyPoint clone(MyPoint p)
+    public static Point clone(Point p)
     {
-        return new MyPoint(p.x, p.y);
+        return new Point(p.x, p.y);
     }
 
 
-    public static MyPoint zero
+    public static Point zero
     {
-        get { return new MyPoint(0, 0); }
+        get { return new Point(0, 0); }
     }
-    public static MyPoint one
+    public static Point one
     {
-        get { return new MyPoint(1, 1); }
+        get { return new Point(1, 1); }
     }
-    public static MyPoint up
+    public static Point up
     {
-        get { return new MyPoint(0, 1); }
+        get { return new Point(0, 2); }
     }
-    public static MyPoint down
+    public static Point down
     {
-        get { return new MyPoint(0, -1); }
+        get { return new Point(0, -2); }
     }
-    public static MyPoint right
+    public static Point rightUp
     {
-        get { return new MyPoint(1, 0); }
+        get { return new Point(1, -1); }
     }
-    public static MyPoint left
+    public static Point rightDown
     {
-        get { return new MyPoint(-1, 0); }
+        get { return new Point(1, 1); }
+    }
+    public static Point leftUp
+    {
+        get { return new Point(-1, -1); }
+    }
+    public static Point leftDown
+    {
+        get { return new Point(-1, 1); }
     }
 }

@@ -78,6 +78,16 @@ public class Point
     {
         get { return new Point(0, -1); }
     }
+
+    public static Point rightDown
+    {
+        get { return new Point(1, 1); }
+    }
+
+    public static Point rightUp
+    {
+        get { return new Point(1, -1); }
+    }
     public static Point right
     {
         get { return new Point(1, 0); }
