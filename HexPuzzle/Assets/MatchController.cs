@@ -8,9 +8,9 @@ public class MatchController : MonoBehaviour
     public RectTransform gameBoard;
     public GameObject nodePiece;
 
-    List<PieceController> update;
-    List<ChangePiece> flipped;
-    List<PieceController> dead;
+    public List<PieceController> update;
+    List<ChangePiece> changed;
+    List<PieceController> blankList;
     HashSet<PieceController> hitObstacle;
 
     public static bool bUpdateLogic = false;
@@ -26,13 +26,20 @@ public class MatchController : MonoBehaviour
             Point.leftUp
         };
 
+    private void Start()
+    {
+        update = new List<PieceController>();
+        changed = new List<ChangePiece>();
+        blankList = new List<PieceController>();
+        hitObstacle = new HashSet<PieceController>();
+    }
     void Update()
     {
         // Gravity Update
         if (bUpdateLogic)
         {
+            //Debug.LogError("bUpdateLogic : " + update.Count);
             List<PieceController> finishedUpdating = new List<PieceController>();
-            //Debug.LogError("gravity : " + update.Count);
             for (int i = 0; i < update.Count; i++)
             {
                 PieceController piece = update[i];
@@ -46,17 +53,17 @@ public class MatchController : MonoBehaviour
             for (int i = 0; i< finishedUpdating.Count; i++)
             {
                 PieceController piece = finishedUpdating[i];
-                //Debug.LogError("finishing : " + piece.point.x + "_" + piece.point.y);
 
                 update.Remove(piece);
+                updateClear();
             }
         }
         else // Picking Update
         {
+            //Debug.LogError("Picking : " + update.Count);
             List<PieceController> finishedUpdating = new List<PieceController>();
             for (int i = 0; i < update.Count; i++)
             {
-                SearchAndDeleteConnectFull();
                 PieceController piece = update[i];
                 if (piece)
                 {
@@ -64,71 +71,55 @@ public class MatchController : MonoBehaviour
                 }
             }
 
-            // 마우스로 뭘 만들면 동작하도록 만들어야 할듯
-
-            // update가 생기면 FULL검사
-
-            //Debug.LogError("move logic : " + update.Count);
-            // 이동 및 검증 로직
-            //for (int i = 0; i < update.Count; i++)
-            //{
-            //    PieceController piece = update[i];
-            //    if (piece) piece.UpdatePiece();
-
-            //    SearchConnectFull();
-            //    DeleteConnectedFull();
-            //}
-
-            //for (int i = 0; i < finishedUpdating.Count; i++)
-            //{
-            //    PieceController piece = finishedUpdating[i];
-            //    ChangePiece change = getFlipped(piece);
-
-            //    PieceController flippedPiece = null;
-            //    bool wasChanged = (change != null);
-
-            //    if (wasChanged) //If we flipped to make this update
-            //    {
-            //        flippedPiece = change.getOtherPiece(piece);
-            //        //AddPoints(ref connected, isConnected(flippedPiece.point, true));
-            //    }
-
-            //    FlipPieces(piece.point, flippedPiece.point, false);
-            //}
-        }
-
-        /*
-        for (int i = 0; i < finishedUpdating.Count; i++)
-        {
-            PieceController piece = finishedUpdating[i];
-            ChangePiece change = getFlipped(piece);
-
-            PieceController flippedPiece = null;
-            bool wasChanged = (change != null);
-
-            if (wasChanged) //If we flipped to make this update
+            for (int i = 0; i < finishedUpdating.Count; i++)
             {
-                flippedPiece = change.getOtherPiece(piece);
-                //AddPoints(ref connected, isConnected(flippedPiece.point, true));
-            }
+                PieceController piece = finishedUpdating[i];
+                ChangePiece change = GetChanged(piece);
+                PieceController flippedPiece = null;
+                bool wasChanged = (change != null);
+                
+                // false면 다시스왑
+                if (!IsConnectPoint(getGridAtPoint(piece.point)))
+                {
+                    if (wasChanged)
+                    {
+                        flippedPiece = change.getOtherPiece(piece);
+                        FlipPieces(piece.point, flippedPiece.point, false);
+                    }
+                }
+                else
+                {
+                    SearchAndDeleteConnectFull();
+                    Debug.LogError("Update");
+                }
 
-            FlipPieces(piece.point, flippedPiece.point, false);
+                changed.Remove(change);
+                update.Remove(piece);
+                updateClear();
+            }
         }
-        */
-        //if (update.Count == 0) bUpdateLogic = false;
     }
 
-    private void Start()
+    void updateClear()
     {
-        update = new List<PieceController>();
-        flipped = new List<ChangePiece>();
-        dead = new List<PieceController>();
-        hitObstacle = new HashSet<PieceController>();
+        bool isEmptyUpdate = false;
+        foreach (PieceController pc in update)
+        {
+            if (pc != null) isEmptyUpdate = true;
+        }
+        if(isEmptyUpdate == false)
+        {
+            update.Clear();
+        }
     }
 
     public void SearchConnectPoint(Grid currentNode)
     {
-        // 방향에 따라서 몇개나 연결되어 있나 확인
+        Point[] directions_2way = {
+            Point.up,
+            Point.rightUp,
+        };
+
         Point currentPoint = currentNode.point;
 
         if (currentNode.value == (int)eStatus.SILVER) return;
@@ -136,46 +127,211 @@ public class MatchController : MonoBehaviour
         if (getValueAtPoint(currentPoint) != -1)
         {
             if (!currentNode.getPiece()) return; 
-                
+
             currentNode.getPiece().initCnt();
+            int linkedCnt = 0;
+            int areaCnt = 0;
+            Point savePoint1 = Point.zero;
+            Point savePoint2 = Point.zero;
+            Point savePriorPoint = Point.zero;
+
             // cnt가 2이상이면 3개 이상 연결된 상황.
             foreach (Point dir in directions)
             {
-                // 첫 칸 이동해서 value가 맞는지 확인
                 Point nextPoint = Point.add(currentPoint, Point.mult(dir, 1));
                 int connectCnt = 0;
-                // 해당 direction으로 value가 틀릴 때까지 찾아봐
+
+                // 6방향 area 검색
+                if (currentNode.value == getValueAtPoint(nextPoint))
+                {
+                    linkedCnt++;
+                    if (areaCnt < linkedCnt)
+                    {
+                        savePoint1 = dir;
+                        savePoint2 = savePriorPoint;
+                        areaCnt = linkedCnt;
+                    }
+                    savePriorPoint = dir;
+                }
+                else
+                {
+                    linkedCnt = 0;
+                }
+
+                // 해당 direction으로 value가 틀릴 때까지 찾기
                 while (currentNode.value == getValueAtPoint(nextPoint))
                 {
                     connectCnt += 1;
-                    nextPoint = Point.add(currentPoint, Point.mult(dir, connectCnt + 1)); // 카운트를 하나씩 증가하면서 체크
+                    nextPoint = Point.add(currentPoint, Point.mult(dir, connectCnt + 1));
                 }
 
                 if (dir.Equals(Point.rightUp) || dir.Equals(Point.leftDown))
                 {
-                    currentNode.getPiece().cntCrossUp += connectCnt;
+                    currentNode.getPiece().cntCrossDown += connectCnt;
                 }
                 if (dir.Equals(Point.rightDown) || dir.Equals(Point.leftUp))
                 {
-                    currentNode.getPiece().cntCrossDown += connectCnt;
+                    currentNode.getPiece().cntCrossUp += connectCnt;
                 }
                 if (dir.Equals(Point.up) || dir.Equals(Point.down))
                 {
                     currentNode.getPiece().cntStraight += connectCnt;
                 }
             }
+
+            // 남은 2방향 area 검색
+            foreach (Point dir in directions_2way)
+            {
+                Point nextPoint = Point.add(currentPoint, Point.mult(dir, 1));
+
+                if (currentNode.value == getValueAtPoint(nextPoint))
+                {
+                    linkedCnt++;
+                    if (areaCnt < linkedCnt)
+                    {
+                        savePoint1 = dir;
+                        savePoint2 = savePriorPoint;
+                        areaCnt = linkedCnt;
+                    }
+                    else
+                    {
+                        linkedCnt = 0;
+                    }
+                }
+                savePriorPoint = dir;
+            }
+
+            // 건너편도 계산
+            if (areaCnt == 2)
+            {
+                Point tempPoint = Point.add(savePoint1, savePoint2);
+                Point nextPoint = Point.add(currentPoint, tempPoint);
+                if (currentNode.value == getValueAtPoint(nextPoint))
+                {
+                    areaCnt++;
+                }
+            }
+            currentNode.getPiece().cntArea = areaCnt;
         }
+    }
+
+    // Piece Change 조건 확인을 위한 Func
+    bool IsConnectPoint(Grid currentNode)
+    {
+        Point[] directions_2way = {
+            Point.up,
+            Point.rightUp,
+        };
+
+        int cntCrossUp = 0;
+        int cntCrossDown = 0;
+        int cntStraight = 0;
+        int cntArea = 0;
+        int linkedCnt = 0;
+        Point savePoint1 = Point.zero;
+        Point savePoint2 = Point.zero;
+        Point savePriorPoint = Point.zero;
+        Point currentPoint = currentNode.point;
+
+        if (currentNode.value == (int)eStatus.SILVER) return false;
+
+
+        if (getValueAtPoint(currentPoint) != -1)
+        {
+            if (!currentNode.getPiece()) return false;
+
+            currentNode.getPiece().initCnt();
+            foreach (Point dir in directions)
+            {
+                Point nextPoint = Point.add(currentPoint, Point.mult(dir, 1));
+                int connectCnt = 0;
+
+                // 6방향 area 검색
+                if (currentNode.value == getValueAtPoint(nextPoint))
+                {
+                    linkedCnt++;
+                    if (cntArea < linkedCnt)
+                    {
+                        savePoint1 = dir;
+                        savePoint2 = savePriorPoint;
+                        cntArea = linkedCnt;
+                    }
+                    savePriorPoint = dir;
+                }
+                else
+                {
+                    linkedCnt = 0;
+                }
+
+                while (currentNode.value == getValueAtPoint(nextPoint))
+                {
+                    connectCnt += 1;
+                    nextPoint = Point.add(currentPoint, Point.mult(dir, connectCnt + 1));
+                }
+
+                if (dir.Equals(Point.rightUp) || dir.Equals(Point.leftDown))
+                {
+                    cntCrossUp += connectCnt;
+                }
+                if (dir.Equals(Point.rightDown) || dir.Equals(Point.leftUp))
+                {
+                   cntCrossDown += connectCnt;
+                }
+                if (dir.Equals(Point.up) || dir.Equals(Point.down))
+                {
+                    cntStraight += connectCnt;
+                }
+            }
+        }
+
+        // 남은 2방향 area 검색
+        foreach (Point dir in directions_2way)
+        {
+            Point nextPoint = Point.add(currentPoint, Point.mult(dir, 1));
+
+            if (currentNode.value == getValueAtPoint(nextPoint))
+            {
+                linkedCnt++;
+                if (cntArea < linkedCnt)
+                {
+                    savePoint1 = dir;
+                    savePoint2 = savePriorPoint;
+                    cntArea = linkedCnt;
+                }
+                else
+                {
+                    linkedCnt = 0;
+                }
+            }
+            savePriorPoint = dir;
+        }
+
+        // 건너편도 계산
+        if (cntArea == 2)
+        {
+            Point tempPoint = Point.add(savePoint1, savePoint2);
+            Point nextPoint = Point.add(currentPoint, tempPoint);
+            if (currentNode.value == getValueAtPoint(nextPoint))
+            {
+                cntArea++;
+            }
+        }
+
+        if (cntCrossDown >= 2 || cntCrossUp >=2 || cntStraight >= 2 || cntArea >= 3)
+        {
+            return true;
+        }
+        return false;
     }
 
     public void ApplyGravityToBoard()
     {
         Point[] directions_2way = {
-            Point.rightUp,
-            Point.leftUp
+            Point.rightDown,
+            Point.leftDown
         };
 
         // 아래서부터 비어있는 공간 찾아서 중력검사 (빈 칸이 생긴 만큼) 
-        // --> Coroutine으로 돌아야지 순차적으로 이동 되는게 보일듯 플립 모두 완료 되면 다음 루틴으로!
         for (int y = (BoardController.height - 1); y >= 0; y--)
         {
             for (int x = 0; x < BoardController.width; x++)
@@ -183,32 +339,32 @@ public class MatchController : MonoBehaviour
                 Grid checkNode = getGridAtPoint(new Point(x, y));
                 if (checkNode.value == -1) continue; // 검사할 필요 없는 Grid
 
-                // 비어있는 애들만 체크 하면 됨.
+                // 비어있는 Piece만 검사
                 if (checkNode.value == 0)
                 {
-                    // 1. 바로 윗칸을 먼저 체크 (height가 아래서 부터 올라감 (역방향))
+                    // 바로 윗칸을 먼저 체크 (height가 아래서 부터 올라감 (역방향))
                     Point checkDirPoint = Point.add(checkNode.point, Point.mult(Point.up, -1));
                     Grid checkDirNode = getGridAtPoint(checkDirPoint);
 
                     if (checkNode.point.y == 0)
                     {
-                        Debug.LogError(checkNode.point.x + "_" + checkNode.point.y + "_최초공간!");
+                        //Debug.LogError(checkNode.point.x + "_" + checkNode.point.y + "_최초공간!");
                         checkNode.value = setValue();
-                        settingPiece(checkNode);
+                        SettingPiece(checkNode);
 
                         continue;
                     }
 
-                    Debug.LogError("[" + checkNode.value + "]" + checkNode.point.x + "_" + checkNode.point.y + "_이번에 체크할 Node");
-                    if (checkDirNode == null) // Top, 가장 윗부분에 접근 (만들어져야할 곳)
+                    //Debug.LogError("[" + checkNode.value + "]" + checkNode.point.x + "_" + checkNode.point.y + "_이번에 체크할 Node");
+                    if (checkDirNode == null)
                     {
-                        foreach (Point dir in directions_2way)
+                        foreach (Point dir in directions_2way) // 좌상향, 우상향 체크
                         {
                             checkDirPoint = Point.add(checkNode.point, Point.mult(dir, 1));
                             checkDirNode = getGridAtPoint(checkDirPoint);
-                            if (checkDirPoint.y >= 0) Debug.LogError("[" + checkDirNode.value + "]" + "checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
+                            //if (checkDirPoint.y >= 0) Debug.LogError("[" + checkDirNode.value + "]" + "checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
 
-                            if (checkDirNode != null && checkDirNode.value > 0) // 유효한 piece가 있다면
+                            if (checkDirNode != null && checkDirNode.value > 0)
                             {
                                 FlipPieces(checkNode.point, checkDirPoint, true);
                                 break;
@@ -221,9 +377,9 @@ public class MatchController : MonoBehaviour
                         {
                             checkDirPoint = Point.add(checkNode.point, Point.mult(dir, 1));
                             checkDirNode = getGridAtPoint(checkDirPoint);
-                            if (checkDirPoint.y >= 0) Debug.LogError("[" + checkDirNode.value + "]" + "checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
+                            //if (checkDirPoint.y >= 0) Debug.LogError("[" + checkDirNode.value + "]" + "checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
 
-                            if (checkDirNode != null && checkDirNode.value > 0) // 유효한 piece가 있다면
+                            if (checkDirNode != null && checkDirNode.value > 0)
                             {
                                 FlipPieces(checkNode.point, checkDirPoint, true);
                                 break;
@@ -232,12 +388,11 @@ public class MatchController : MonoBehaviour
                     }
                     else // 당겨야할 곳
                     {
-                        // 2. 위 쪽 공간이 비어있으면 pass
+                        // 위 쪽 공간이 비어있으면 pass
                         if (checkDirNode.value > 0)
                         {
-                            Debug.LogError("checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
-                            Debug.LogError(checkNode.point.x + "_" + checkNode.point.y + "_위에 있으니까 플립!");
-                            // 5. 둘 다 아니면 위에 뭔가가 있다는거니까 Flip해서 교체
+                            //Debug.LogError("checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
+                            //Debug.LogError(checkNode.point.x + "_" + checkNode.point.y + "_위에 있으니까 플립!");
                             FlipPieces(checkNode.point, checkDirPoint, true);
                         }
                     }
@@ -245,24 +400,24 @@ public class MatchController : MonoBehaviour
             }
         }
 
-        dead.RemoveAt(dead.Count - 1);
+        blankList.RemoveAt(blankList.Count - 1);
     }
 
-    ChangePiece getFlipped(PieceController p)
+    ChangePiece GetChanged(PieceController p)
     {
         ChangePiece flip = null;
-        for (int i = 0; i < flipped.Count; i++)
+        for (int i = 0; i < changed.Count; i++)
         {
-            if (flipped[i].getOtherPiece(p) != null)
+            if (changed[i].getOtherPiece(p) != null)
             {
-                flip = flipped[i];
+                flip = changed[i];
                 break;
             }
         }
         return flip;
     }
 
-    public void settingPiece(Grid grid)
+    public void SettingPiece(Grid grid)
     {
         GameObject p = Instantiate(nodePiece, gameBoard); // piece Object 생성
         PieceController piece = p.GetComponent<PieceController>();
@@ -282,7 +437,7 @@ public class MatchController : MonoBehaviour
                 if (tempNode.value != -1)
                 {
                     PieceController tempNodePiece = tempNode.getPiece();
-                    if ((tempNodePiece.cntCrossDown >= 2 || tempNodePiece.cntCrossUp >= 2 || tempNodePiece.cntStraight >= 2))
+                    if (tempNodePiece && (tempNodePiece.cntCrossDown >= 2 || tempNodePiece.cntCrossUp >= 2 || tempNodePiece.cntStraight >= 2 || tempNodePiece.cntArea >= 3))
                     {
                         DeleteConnectedPoint(tempNode.point);
                     }
@@ -290,65 +445,70 @@ public class MatchController : MonoBehaviour
             }
         }
 
-        // obstacle에 hit 적용
+        // obstacle 적용
         foreach(PieceController pc in hitObstacle)
         {
-            pc.hitCount++;
+            int hitcount = pc.getHitCount() + 1;
+            pc.setHitCount(hitcount);
+            if (hitcount == 2)
+            {
+                blankList.Add(pc);
+                getGridAtPoint(pc.point).SetPiece(null);
+                Destroy(pc.gameObject);
+            }
         }
         hitObstacle.Clear();
 
-        // 중력 적용 필요함!!
-        IEnumerator enumerator;
-        enumerator = applyGravitybyTick();
-
-        // Coroutine으로 진행 만약 삭제된 애들이 있다면!
-        if (dead.Count != 0)
+        if (blankList.Count != 0)
         {
             bUpdateLogic = true;
-            StartCoroutine(enumerator);
+            StartCoroutine(applyGravitybyTick());
         }
     }
+
     IEnumerator applyGravitybyTick()
     {
         Debug.LogError("ApplyGravityToBoard");
-        // ApplyGravityToBoard()는 dead.Count가 0이 될 때까지 진행되어야 함.
-        while (dead.Count != 0)
+        // ApplyGravityToBoard()는 dead.Count가 0이 될 때까지 진행되어야 함.(Tick마다)
+        while (blankList.Count != 0)
         {
+            Debug.LogError("blankList.Count : " + blankList.Count);
             ApplyGravityToBoard();
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.2f);
         }
-
-        update.Clear();
         bUpdateLogic = false;
-        yield return null;
+
+        yield return new WaitUntil(() => update.Count == 0);
+
+        SearchAndDeleteConnectFull();
     }
 
     void DeleteConnectedPoint(Point point)
     {
         // 나중에 오브젝트 풀링해도 될듯
-        Debug.LogError("[ deleted ] " + point.x + "_" + point.y);
+        //Debug.LogError("[ deleted ] " + point.x + "_" + point.y);
         Grid grid = getGridAtPoint(point);
         PieceController nodePiece = grid.getPiece();
         if (nodePiece != null)
         {
-            dead.Add(nodePiece);
+            blankList.Add(nodePiece);
             GameObject.Destroy(nodePiece.gameObject); // piece 삭제
         }
         grid.SetPiece(null); // 그리드 안에 pieceController 정리
 
         // 주변에 silver가 있다면 Cnt를 늘리고 Update시켜주자..!
-        //foreach(Point dir in directions)
-        //{
-        //    Point checkDirPoint = Point.add(point, Point.mult(dir, 1));
+        foreach (Point dir in directions)
+        {
+            Point checkDirPoint = Point.add(point, Point.mult(dir, 1));
 
-        //    if (checkDirPoint.y < 0) continue;
-                
-        //    Grid tempGrid = getGridAtPoint(checkDirPoint);
-        //    if(tempGrid.value == (int)eStatus.SILVER)
-        //    {
-        //        hitObstacle.Add(tempGrid.getPiece());
-        //    }
-        //}
+            if (!(checkDirPoint.y > 0 && checkDirPoint.y < BoardController.height) || !(checkDirPoint.x > 0 && checkDirPoint.x < BoardController.width)) continue;
+
+            Grid tempGrid = getGridAtPoint(checkDirPoint);
+            if (tempGrid.value == (int)eStatus.SILVER)
+            {
+                hitObstacle.Add(tempGrid.getPiece());
+            }
+        }
     }
 
     public void SearchAndDeleteConnectFull()
@@ -395,7 +555,7 @@ public class MatchController : MonoBehaviour
             nodeTwo.SetPiece(pieceOne);
 
             if (main)
-                flipped.Add(new ChangePiece(pieceOne, pieceTwo));
+                changed.Add(new ChangePiece(pieceOne, pieceTwo));
 
             update.Add(pieceOne);
             update.Add(pieceTwo);

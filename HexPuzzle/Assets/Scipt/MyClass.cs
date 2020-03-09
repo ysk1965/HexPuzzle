@@ -145,19 +145,19 @@ public class Point
     {
         get { return new Point(0, -2); }
     }
-    public static Point rightUp
+    public static Point rightDown
     {
         get { return new Point(1, -1); }
     }
-    public static Point rightDown
+    public static Point rightUp
     {
         get { return new Point(1, 1); }
     }
-    public static Point leftUp
+    public static Point leftDown
     {
         get { return new Point(-1, -1); }
     }
-    public static Point leftDown
+    public static Point leftUp
     {
         get { return new Point(-1, 1); }
     }

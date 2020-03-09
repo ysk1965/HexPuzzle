@@ -78,7 +78,7 @@ public class BoardController : MonoBehaviour
 
                 if (node.value <= 0) continue;
 
-                mc.settingPiece(node);
+                mc.SettingPiece(node);
             }
         }
         mc.SearchConnectFull();

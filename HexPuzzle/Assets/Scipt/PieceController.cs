@@ -12,8 +12,9 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
     public int cntCrossUp;
     public int cntCrossDown;
     public int cntStraight;
+    public int cntArea;
 
-    public int hitCount =0;
+    private int hitCount = 0;
 
     [HideInInspector]
     public Vector2 pos;
@@ -22,19 +23,19 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
 
     bool updating;
 
-    public void Update()
+    public void Update() {
+        if (hitCount == 1) gameObject.transform.Rotate(new Vector3(0, 0, 2));
+    }
+
+    public int getHitCount()
     {
-        switch (hitCount)
-        {
-            case 0:
-                break;
-            case 1:
-                gameObject.transform.Rotate(new Vector3(0, 0, 2));
-                //DeleteConnectedPoint(point);
-                break;
-            case 2:
-                break;
-        }
+        return hitCount;
+    }
+
+    public void setHitCount(int val)
+    {
+        hitCount = val;
+        return;
     }
 
     public void Initialize(int v, Point p)
@@ -93,12 +94,12 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
 
     public void MovePosition(Vector2 move)
     {
-        rect.anchoredPosition += move * Time.deltaTime * 16f;
+        rect.anchoredPosition += move * Time.deltaTime * 25f;
     }
 
     public void MovePositionTo(Vector2 move)
     {
-        rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, move, Time.deltaTime * 16f);
+        rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, move, Time.deltaTime * 25f);
     }
 
     public void SetPosition(Vector2 move)
@@ -124,7 +125,7 @@ public class PieceController : MonoBehaviour, IPointerDownHandler, IPointerUpHan
 
     void UpdateName()
     {
-        transform.name = "Grid [" + point.x + ", " + point.y + "]";
+        transform.name = "[" + point.x + ", " + point.y + "]";
     }
 
     public void OnPointerDown(PointerEventData eventData)

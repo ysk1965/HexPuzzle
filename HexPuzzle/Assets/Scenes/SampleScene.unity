@@ -154,6 +154,7 @@ MonoBehaviour:
   gameBoard: {fileID: 2086426015}
   nodePiece: {fileID: 9079961453889720355, guid: 8ed823b1553343f42a2d243f8044e321,
     type: 3}
+  pieceSpeed: 0.5
 --- !u!4 &22857152
 Transform:
   m_ObjectHideFlags: 0
