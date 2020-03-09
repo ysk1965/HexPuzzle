@@ -5,10 +5,13 @@ using UnityEngine;
 public class MatchController : MonoBehaviour
 {
     // public 
+    [Header("NEED LINK")]
     public RectTransform gameBoard;
     public GameObject nodePiece;
 
-    public List<PieceController> update;
+    public float logicSpeed = 0.15f;
+
+    List<PieceController> update;
     List<ChangePiece> changed;
     List<PieceController> blankList;
     HashSet<PieceController> hitObstacle;
@@ -60,6 +63,15 @@ public class MatchController : MonoBehaviour
         }
         else // Picking Update
         {
+            // 승패로직
+            if (GameController.instance.obstacleCount == 0) {
+                GameController.instance.gameEnding(true);
+            }
+            if (GameController.instance.moveCount == 0)
+            {
+                GameController.instance.gameEnding(false);
+            }
+
             //Debug.LogError("Picking : " + update.Count);
             List<PieceController> finishedUpdating = new List<PieceController>();
             for (int i = 0; i < update.Count; i++)
@@ -89,6 +101,7 @@ public class MatchController : MonoBehaviour
                 }
                 else
                 {
+                    GameController.instance.MinusMoveCountvalue(1);
                     SearchAndDeleteConnectFull();
                     Debug.LogError("Update");
                 }
@@ -452,6 +465,12 @@ public class MatchController : MonoBehaviour
             pc.setHitCount(hitcount);
             if (hitcount == 2)
             {
+                if (pc.value == (int)eStatus.SILVER)
+                {
+                    GameController.instance.MinusObstacleCountvalue();
+                }
+                SetGameScore(pc.value);
+
                 blankList.Add(pc);
                 getGridAtPoint(pc.point).SetPiece(null);
                 Destroy(pc.gameObject);
@@ -468,29 +487,32 @@ public class MatchController : MonoBehaviour
 
     IEnumerator applyGravitybyTick()
     {
-        Debug.LogError("ApplyGravityToBoard");
+        //Debug.LogError("ApplyGravityToBoard");
         // ApplyGravityToBoard()는 dead.Count가 0이 될 때까지 진행되어야 함.(Tick마다)
         while (blankList.Count != 0)
         {
-            Debug.LogError("blankList.Count : " + blankList.Count);
+            //Debug.LogError("blankList.Count : " + blankList.Count);
             ApplyGravityToBoard();
-            yield return new WaitForSeconds(0.2f);
+            yield return new WaitForSeconds(logicSpeed);
         }
-        bUpdateLogic = false;
 
         yield return new WaitUntil(() => update.Count == 0);
 
         SearchAndDeleteConnectFull();
+
+        bUpdateLogic = false;
     }
 
     void DeleteConnectedPoint(Point point)
     {
-        // 나중에 오브젝트 풀링해도 될듯
         //Debug.LogError("[ deleted ] " + point.x + "_" + point.y);
         Grid grid = getGridAtPoint(point);
         PieceController nodePiece = grid.getPiece();
+
         if (nodePiece != null)
         {
+            SetGameScore(nodePiece.value);
+
             blankList.Add(nodePiece);
             GameObject.Destroy(nodePiece.gameObject); // piece 삭제
         }
@@ -511,7 +533,36 @@ public class MatchController : MonoBehaviour
         }
     }
 
-    public void SearchAndDeleteConnectFull()
+    void SetGameScore(int val)
+    {
+        switch (val)
+        {
+            case 0:
+                break;
+            case 1:
+                GameController.instance.AddScoreCountvalue(10);
+                break;
+            case 2:
+                GameController.instance.AddScoreCountvalue(20);
+                break;
+            case 3:
+                GameController.instance.AddScoreCountvalue(30);
+                break;
+            case 4:
+                GameController.instance.AddScoreCountvalue(40);
+                break;
+            case 5:
+                GameController.instance.AddScoreCountvalue(50);
+                break;
+            case 6:
+                GameController.instance.AddScoreCountvalue(200);
+                break;
+        }
+    }
+
+
+
+public void SearchAndDeleteConnectFull()
     {
         for (int x = 0; x < BoardController.width; x++)
         {
