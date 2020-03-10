@@ -6,13 +6,16 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
     [Header("UI Setting")]
+    public BoardController bc;
+    public GameObject resultObject;
+
     public Text UI_moveCount;
     public Text UI_obstacleCount;
     public Text UI_score;
 
     public int moveCount;
     public int obstacleCount;
-    public int score;
+    public int initScore;
 
     public static GameController instance;
     // Start is called before the first frame update
@@ -22,7 +25,7 @@ public class GameController : MonoBehaviour
 
         moveCount = 20;
         obstacleCount = 10;
-        score = 0;
+        initScore = 0;
 
         SetmoveCountvalue(moveCount);
         SetObstacleCountvalue(obstacleCount);
@@ -59,8 +62,15 @@ public class GameController : MonoBehaviour
     public void AddScoreCountvalue(int val)
     {
         if (!UI_score) return;
-        score += val;
-        UI_score.text = score.ToString();
+        initScore += val;
+        UI_score.text = initScore.ToString();
+    }
+
+    public void SetScoreCountvalue(int val)
+    {
+        if (!UI_score) return;
+        initScore = val;
+        UI_score.text = initScore.ToString();
     }
 
     public void ResultRogic()
@@ -68,19 +78,28 @@ public class GameController : MonoBehaviour
         // 승리
         if (obstacleCount == 0)
         {
-            // 다시하기 만들기
+            resultObject.SetActive(true);
         }
 
         // 패배
         if (moveCount == 0)
         {
-            // 다시하기 만들기
+            resultObject.SetActive(true);
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    public void RestartGame()
     {
-        
+        Debug.LogError("RESTART");
+        moveCount = 20;
+        obstacleCount = 10;
+        initScore = 0;
+        SetmoveCountvalue(moveCount);
+        SetObstacleCountvalue(obstacleCount);
+        SetScoreCountvalue(initScore);
+
+        bc.MakeBoard();
+
+        resultObject.SetActive(false);
     }
 }

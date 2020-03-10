@@ -43,10 +43,18 @@ public class BoardController : MonoBehaviour
         MakeBoard();
     }
 
-    void MakeBoard()
+    public void MakeBoard()
     {
         // Grid Setting
-        puzzleBoard = new Grid[width, height];
+        if (puzzleBoard == null)
+        {
+            puzzleBoard = new Grid[width, height];
+        }
+        else
+        {
+            DeletePiece();
+        }
+
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
@@ -55,19 +63,41 @@ public class BoardController : MonoBehaviour
             }
         }
 
+        InitializeBoard();
+    }
+
+    public void InitializeBoard()
+    {
         // Init Piece Setting
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                Grid node = mc.getGridAtPoint(new Point(x, y));
+                Grid node = mc.GetGridAtPoint(new Point(x, y));
 
                 if (node.value <= 0) continue;
 
-                mc.SettingPiece(node);
+                mc.MakePiece(node);
             }
         }
-        mc.SearchConnectFull();
-        mc.DeleteConnectedFull();
+    }
+
+    public void DeletePiece()
+    {
+        for (int x = 0; x< width; x++)
+        {
+            for(int y = 0; y < height; y++)
+            {
+                Grid g = mc.GetGridAtPoint(new Point(x, y));
+                if (g == null) continue;
+
+                PieceController p = g.getPiece();
+                if ((p != null))
+                {
+                    g.SetPiece(null);
+                    Destroy(p.gameObject);
+                }
+            }
+        }
     }
 }

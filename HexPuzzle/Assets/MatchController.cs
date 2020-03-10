@@ -63,14 +63,7 @@ public class MatchController : MonoBehaviour
         }
         else // Picking Update
         {
-            // 승패로직
-            if (GameController.instance.obstacleCount == 0) {
-                GameController.instance.gameEnding(true);
-            }
-            if (GameController.instance.moveCount == 0)
-            {
-                GameController.instance.gameEnding(false);
-            }
+            GameController.instance.ResultRogic();
 
             //Debug.LogError("Picking : " + update.Count);
             List<PieceController> finishedUpdating = new List<PieceController>();
@@ -88,22 +81,30 @@ public class MatchController : MonoBehaviour
                 PieceController piece = finishedUpdating[i];
                 ChangePiece change = GetChanged(piece);
                 PieceController flippedPiece = null;
-                bool wasChanged = (change != null);
                 
-                // false면 다시스왑
-                if (!IsConnectPoint(getGridAtPoint(piece.point)))
-                {
-                    if (wasChanged)
-                    {
-                        flippedPiece = change.getOtherPiece(piece);
-                        FlipPieces(piece.point, flippedPiece.point, false);
-                    }
-                }
-                else
+                // 바꾸는 조각체크
+                if (IsConnectPoint(GetGridAtPoint(piece.point)))
                 {
                     GameController.instance.MinusMoveCountvalue(1);
                     SearchAndDeleteConnectFull();
-                    Debug.LogError("Update");
+                }
+                else
+                {
+                    if (change != null)
+                    {
+                        flippedPiece = change.getOtherPiece(piece);
+                        // 바뀐 조각체크
+                        if (IsConnectPoint(GetGridAtPoint(flippedPiece.point)))
+                        {
+                            GameController.instance.MinusMoveCountvalue(1);
+                            SearchAndDeleteConnectFull();
+                        }
+                        else
+                        {
+                            FlipPieces(piece.point, flippedPiece.point, false);
+                        }
+
+                    }
                 }
 
                 changed.Remove(change);
@@ -349,7 +350,7 @@ public class MatchController : MonoBehaviour
         {
             for (int x = 0; x < BoardController.width; x++)
             {
-                Grid checkNode = getGridAtPoint(new Point(x, y));
+                Grid checkNode = GetGridAtPoint(new Point(x, y));
                 if (checkNode.value == -1) continue; // 검사할 필요 없는 Grid
 
                 // 비어있는 Piece만 검사
@@ -357,13 +358,13 @@ public class MatchController : MonoBehaviour
                 {
                     // 바로 윗칸을 먼저 체크 (height가 아래서 부터 올라감 (역방향))
                     Point checkDirPoint = Point.add(checkNode.point, Point.mult(Point.up, -1));
-                    Grid checkDirNode = getGridAtPoint(checkDirPoint);
+                    Grid checkDirNode = GetGridAtPoint(checkDirPoint);
 
                     if (checkNode.point.y == 0)
                     {
                         //Debug.LogError(checkNode.point.x + "_" + checkNode.point.y + "_최초공간!");
                         checkNode.value = setValue();
-                        SettingPiece(checkNode);
+                        MakePiece(checkNode);
 
                         continue;
                     }
@@ -374,7 +375,7 @@ public class MatchController : MonoBehaviour
                         foreach (Point dir in directions_2way) // 좌상향, 우상향 체크
                         {
                             checkDirPoint = Point.add(checkNode.point, Point.mult(dir, 1));
-                            checkDirNode = getGridAtPoint(checkDirPoint);
+                            checkDirNode = GetGridAtPoint(checkDirPoint);
                             //if (checkDirPoint.y >= 0) Debug.LogError("[" + checkDirNode.value + "]" + "checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
 
                             if (checkDirNode != null && checkDirNode.value > 0)
@@ -389,7 +390,7 @@ public class MatchController : MonoBehaviour
                         foreach (Point dir in directions_2way)
                         {
                             checkDirPoint = Point.add(checkNode.point, Point.mult(dir, 1));
-                            checkDirNode = getGridAtPoint(checkDirPoint);
+                            checkDirNode = GetGridAtPoint(checkDirPoint);
                             //if (checkDirPoint.y >= 0) Debug.LogError("[" + checkDirNode.value + "]" + "checkDirPoint" + checkDirPoint.x + "," + checkDirPoint.y);
 
                             if (checkDirNode != null && checkDirNode.value > 0)
@@ -430,7 +431,7 @@ public class MatchController : MonoBehaviour
         return flip;
     }
 
-    public void SettingPiece(Grid grid)
+    public void MakePiece(Grid grid)
     {
         GameObject p = Instantiate(nodePiece, gameBoard); // piece Object 생성
         PieceController piece = p.GetComponent<PieceController>();
@@ -440,13 +441,19 @@ public class MatchController : MonoBehaviour
         grid.SetPiece(piece); // Grid와 piece 연결
     }
 
+    public void DeletePiece(Grid grid)
+    {
+        grid.SetPiece(null);
+        Destroy(grid.getPiece());
+    }
+
     public void DeleteConnectedFull()
     {
         for (int x = 0; x < BoardController.width; x++)
         {
             for (int y = 0; y < BoardController.height; y++)
             {
-                Grid tempNode = getGridAtPoint(new Point(x, y));
+                Grid tempNode = GetGridAtPoint(new Point(x, y));
                 if (tempNode.value != -1)
                 {
                     PieceController tempNodePiece = tempNode.getPiece();
@@ -472,7 +479,7 @@ public class MatchController : MonoBehaviour
                 SetGameScore(pc.value);
 
                 blankList.Add(pc);
-                getGridAtPoint(pc.point).SetPiece(null);
+                GetGridAtPoint(pc.point).SetPiece(null);
                 Destroy(pc.gameObject);
             }
         }
@@ -506,7 +513,7 @@ public class MatchController : MonoBehaviour
     void DeleteConnectedPoint(Point point)
     {
         //Debug.LogError("[ deleted ] " + point.x + "_" + point.y);
-        Grid grid = getGridAtPoint(point);
+        Grid grid = GetGridAtPoint(point);
         PieceController nodePiece = grid.getPiece();
 
         if (nodePiece != null)
@@ -525,7 +532,7 @@ public class MatchController : MonoBehaviour
 
             if (!(checkDirPoint.y > 0 && checkDirPoint.y < BoardController.height) || !(checkDirPoint.x > 0 && checkDirPoint.x < BoardController.width)) continue;
 
-            Grid tempGrid = getGridAtPoint(checkDirPoint);
+            Grid tempGrid = GetGridAtPoint(checkDirPoint);
             if (tempGrid.value == (int)eStatus.SILVER)
             {
                 hitObstacle.Add(tempGrid.getPiece());
@@ -568,7 +575,7 @@ public void SearchAndDeleteConnectFull()
         {
             for (int y = 0; y < BoardController.height; y++)
             {
-                SearchConnectPoint(getGridAtPoint(new Point(x, y)));
+                SearchConnectPoint(GetGridAtPoint(new Point(x, y)));
             }
         }
 
@@ -581,7 +588,7 @@ public void SearchAndDeleteConnectFull()
         {
             for (int y = 0; y < BoardController.height; y++)
             {
-                SearchConnectPoint(getGridAtPoint(new Point(x, y)));
+                SearchConnectPoint(GetGridAtPoint(new Point(x, y)));
             }
         }
     }
@@ -596,11 +603,11 @@ public void SearchAndDeleteConnectFull()
     {
         if (getValueAtPoint(one) < 0) return;
 
-        Grid nodeOne = getGridAtPoint(one);
+        Grid nodeOne = GetGridAtPoint(one);
         PieceController pieceOne = nodeOne.getPiece();
         if (getValueAtPoint(two) > 0)
         {
-            Grid nodeTwo = getGridAtPoint(two);
+            Grid nodeTwo = GetGridAtPoint(two);
             PieceController pieceTwo = nodeTwo.getPiece();
             nodeOne.SetPiece(pieceTwo);
             nodeTwo.SetPiece(pieceOne);
@@ -626,7 +633,7 @@ public void SearchAndDeleteConnectFull()
         return BoardController.puzzleBoard[p.x, p.y].value;
     }
 
-    public Grid getGridAtPoint(Point p)
+    public Grid GetGridAtPoint(Point p)
     {
         if (p.y < 0) return null;
 
